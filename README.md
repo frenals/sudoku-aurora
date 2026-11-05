@@ -63,6 +63,12 @@ Because the very first APK distributed from this repo was already signed with th
 
 The script will: increment `versionCode`, set `versionName`, build `assembleRelease`, verify the APK signature **and** that its certificate matches the locked fingerprint, verify `aapt` badging (package / version codes), copy the APK to `SudokuAurora.apk` (always-latest) and `dist/SudokuAurora-vX.Y.Z.apk`, commit and push, then create the GitHub Release with the APK attached and the CHANGELOG section as notes.
 
+Preview a release without publishing anything — it still increments the version, builds the signed APK and verifies the certificate/badging, then restores `build.gradle`:
+
+```bash
+./scripts/release.sh 2.0.1 --dry-run
+```
+
 **Requirements**: JDK 17, Android SDK with `platforms/android-34` + `build-tools/34.0.0`, Gradle 8.7 (the wrapper, or set `GRADLE=/path/to/gradle`), and `gh` authenticated with the `repo` scope. Environment variables `JAVA_HOME`, `ANDROID_HOME` (or `sdk.dir` in `local.properties`) are used; `local.properties` is intentionally gitignored because it contains a machine-specific SDK path.
 
 To build/test locally without publishing:

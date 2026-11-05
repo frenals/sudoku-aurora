@@ -12,8 +12,10 @@
 set -euo pipefail
 
 VERSION="${1:-}"
+DRY_RUN=0
+[[ "${2:-}" == "--dry-run" ]] && DRY_RUN=1
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.]+)?$ ]]; then
-  echo "Usage: ./scripts/release.sh <semver>   (e.g. 2.0.1)" >&2
+  echo "Usage: ./scripts/release.sh <semver> [--dry-run]   (e.g. 2.0.1)" >&2
   exit 1
 fi
 
@@ -23,12 +25,29 @@ BG="$APP/app/build.gradle"
 CHANGELOG="$ROOT/CHANGELOG.md"
 FINGERPRINT="$ROOT/scripts/signing-fingerprint.txt"
 NOTES="$(mktemp)"
+BG_BACKUP=""
 
 # The connector exports a read-only GITHUB_TOKEN; gh must use its own stored token.
 unset GITHUB_TOKEN GH_TOKEN
 
+cleanup() {
+  # A dry run must leave versionCode / versionName exactly as they were.
+  if (( DRY_RUN )) && [[ -n "$BG_BACKUP" && -f "$BG_BACKUP" ]]; then
+    cp "$BG_BACKUP" "$BG"
+  fi
+  rm -f "$BG_BACKUP" "$NOTES"
+  if [[ -n "${REPO:-}" ]]; then
+    git -C "$ROOT" remote set-url origin "https://github.com/${REPO}.git" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
 # ---- 1. release notes must exist in CHANGELOG -----------------------------
-python3 - "$CHANGELOG" "$VERSION" "$NOTES" <<'PY'
+if (( DRY_RUN )); then
+  # A dry run publishes nothing, so a CHANGELOG section is not required.
+  printf 'Dry run - no release published.\n' > "$NOTES"
+else
+  python3 - "$CHANGELOG" "$VERSION" "$NOTES" <<'PY'
 import sys, re
 text = open(sys.argv[1], encoding='utf-8').read()
 v = re.escape(sys.argv[2])
@@ -41,8 +60,13 @@ if not notes:
 open(sys.argv[3], 'w', encoding='utf-8').write(notes + '\n')
 print("Release notes: %d characters" % len(notes))
 PY
+fi
 
 # ---- 2. bump version ------------------------------------------------------
+if (( DRY_RUN )); then
+  BG_BACKUP=$(mktemp)
+  cp "$BG" "$BG_BACKUP"
+fi
 OLD_CODE=$(python3 - "$BG" <<'PY'
 import sys, re
 m = re.search(r'\bversionCode\s+(\d+)', open(sys.argv[1]).read())
@@ -105,10 +129,23 @@ for expect in "name='com.workbuddy.sudoku'" "versionCode='$NEW_CODE'" "versionNa
 done
 
 # ---- 6. stage artifacts ----------------------------------------------------
-cp "$APK" "$ROOT/SudokuAurora.apk"
-mkdir -p "$ROOT/dist"
-cp "$APK" "$ROOT/dist/SudokuAurora-v$VERSION.apk"
-ls -lh "$ROOT/SudokuAurora.apk" "$ROOT/dist/SudokuAurora-v$VERSION.apk"
+if (( DRY_RUN )); then
+  echo "Dry run: not staging APKs, not committing, not publishing"
+else
+  cp "$APK" "$ROOT/SudokuAurora.apk"
+  mkdir -p "$ROOT/dist"
+  cp "$APK" "$ROOT/dist/SudokuAurora-v$VERSION.apk"
+  ls -lh "$ROOT/SudokuAurora.apk" "$ROOT/dist/SudokuAurora-v$VERSION.apk"
+fi
+
+if (( DRY_RUN )); then
+  echo ""
+  echo "=== DRY RUN OK ==="
+  echo "Next release would be: versionCode $NEW_CODE, versionName $VERSION"
+  echo "Verified: same package + same signing certificate + higher versionCode"
+  echo "=> that APK would install in place over the current installation."
+  exit 0
+fi
 
 # ---- 7. commit and push ----------------------------------------------------
 cd "$ROOT"
@@ -135,11 +172,6 @@ else
 fi
 
 TOKEN=$(env -u GITHUB_TOKEN -u GH_TOKEN gh auth token)
-cleanup() {
-  git remote set-url origin "https://github.com/$REPO.git" 2>/dev/null || true
-  rm -f "$NOTES"
-}
-trap cleanup EXIT
 git remote set-url origin "https://oauth2:${TOKEN}@github.com/${REPO}.git"
 git -c credential.helper= push -u origin main
 echo "Pushed to origin/main"
