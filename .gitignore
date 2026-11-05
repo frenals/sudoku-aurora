@@ -18,3 +18,7 @@ Thumbs.db
 
 # WorkBuddy internal project data
 .codebuddy/
+
+# Release build artifacts are uploaded to GitHub Releases, not committed
+dist/
+*.apk.idsig

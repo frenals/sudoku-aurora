@@ -2,6 +2,23 @@ plugins {
     id 'com.android.application'
 }
 
+// ---------------------------------------------------------------------------
+// Signing: BOTH debug and release builds use the same persistent key.
+// Android only allows an APK to replace an already-installed one when the two
+// share the same signing certificate. The key lives in the repo on purpose so
+// every clone/CI build produces an updatable APK. Never rotate it.
+// Expected certificate SHA-256: scripts/signing-fingerprint.txt
+// See README.md -> "Updating the app".
+// ---------------------------------------------------------------------------
+def keystoreProps = new Properties()
+def keystorePropsFile = rootProject.file('keystore.properties')
+if (keystorePropsFile.exists()) {
+    keystoreProps.load(new FileInputStream(keystorePropsFile))
+}
+def storePath = keystoreProps.getProperty('storeFile')
+def signingKeyFile = storePath ? rootProject.file(storePath) : null
+def hasSigningKey = signingKeyFile != null && signingKeyFile.exists()
+
 android {
     namespace 'com.workbuddy.sudoku'
     compileSdk 34
@@ -11,8 +28,30 @@ android {
         minSdk 21
         targetSdk 34
         multiDexEnabled true
+        // versionCode MUST strictly increase on every release. release.sh bumps it.
         versionCode 2
         versionName '2.0-aurora'
+    }
+
+    signingConfigs {
+        if (hasSigningKey) {
+            app {
+                storeFile signingKeyFile
+                storePassword keystoreProps.getProperty('storePassword')
+                keyAlias keystoreProps.getProperty('keyAlias')
+                keyPassword keystoreProps.getProperty('keyPassword')
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (hasSigningKey) signingConfig signingConfigs.app
+        }
+        release {
+            if (hasSigningKey) signingConfig signingConfigs.app
+            minifyEnabled false
+        }
     }
 
     compileOptions {
