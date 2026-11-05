@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Sudoku Aurora</string>
+    <string name="title">SUDOKU</string>
+    <string name="subtitle">AURORA EDITION</string>
+    <string name="timer_initial">00:00</string>
+    <string name="diff_easy">EASY</string>
+    <string name="diff_medium">MEDIUM</string>
+    <string name="diff_hard">HARD</string>
+    <string name="mistakes">MISTAKES</string>
+    <string name="check_off">AUTO-CHECK  OFF</string>
+    <string name="check_on">AUTO-CHECK  ON</string>
+    <string name="action_undo">UNDO</string>
+    <string name="action_erase">ERASE</string>
+    <string name="action_notes">NOTES</string>
+    <string name="action_hint">HINT</string>
+    <string name="action_new">NEW</string>
+    <string name="progress">PROGRESS</string>
+    <string name="generating">Crafting your puzzle…</string>
+    <string name="win_title">PUZZLE SOLVED</string>
+    <string name="win_again">PLAY AGAIN</string>
+    <string name="win_close">CLOSE</string>
+    <string name="notes_on">NOTES ON</string>
+    <string name="notes_off">NOTES OFF</string>
+</resources>
