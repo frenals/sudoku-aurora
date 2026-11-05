@@ -29,8 +29,8 @@ android {
         targetSdk 34
         multiDexEnabled true
         // versionCode MUST strictly increase on every release. release.sh bumps it.
-        versionCode 2
-        versionName '2.0-aurora'
+        versionCode 3
+        versionName '2.0.0'
     }
 
     signingConfigs {
